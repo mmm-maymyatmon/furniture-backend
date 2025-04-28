@@ -1,0 +1,11 @@
+node_modules/
+dist
+dist-ssr
+.env
+.env/example
+
+.vscode/*
+!.vscode/extension.json
+.idea
+.env
+generated/prisma
