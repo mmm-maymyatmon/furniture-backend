@@ -22,6 +22,7 @@ app
   .use(helmet())
   .use(compression())
   .use(limiter);
+app.use(express.static("public"))
 
 app.use("/api/v1", healthRoutes)
 app.use(viewRoutes)
