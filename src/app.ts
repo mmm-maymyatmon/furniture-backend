@@ -23,7 +23,7 @@ app
 app.use(express.static("public"))
 
 app.use("/api/v1", authRoutes)
-app.use(viewRoutes)
+// app.use(viewRoutes)
 
 
 app.use((error: any, req: Request, res: Response, next: NextFunction) => {

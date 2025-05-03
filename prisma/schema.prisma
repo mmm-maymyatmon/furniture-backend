@@ -9,8 +9,8 @@ datasource db {
 }
 
 model Category {
-  id      Int       @id @default(autoincrement())
-  name    String    @db.VarChar(52)
+  id       Int       @id @default(autoincrement())
+  name     String    @db.VarChar(52)
   posts    Post[]
   products Product[]
 }
@@ -19,30 +19,30 @@ model Image {
   id        Int     @id @default(autoincrement())
   path      String  @db.VarChar(255)
   productId Int
-  product  Product @relation(fields: [productId], references: [id])
+  product   Product @relation(fields: [productId], references: [id])
 }
 
 model Order {
-  id               Int                @id @default(autoincrement())
-  userId           Int
-  code             String             @db.VarChar(15)
-  totalPrice       Decimal            @db.Decimal(10, 2)
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime
-  User             User               @relation(fields: [userId], references: [id])
-  products ProductsOnOrders[]
+  id         Int                @id @default(autoincrement())
+  userId     Int
+  code       String             @db.VarChar(15)
+  totalPrice Decimal            @db.Decimal(10, 2)
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+  User       User               @relation(fields: [userId], references: [id])
+  products   ProductsOnOrders[]
 }
 
 model Otp {
   id            Int      @id @default(autoincrement())
-  phone         String   @db.VarChar(15)
+  phone         String   @unique @db.VarChar(15)
   otp           String   @db.VarChar(6)
   rememberToken String
   verifiedToken String?
   count         Int      @default(0) @db.SmallInt
   errorCount    Int      @default(0) @db.SmallInt
   createdAt     DateTime @default(now())
-  updatedAt     DateTime
+  updatedAt     DateTime @updatedAt
 }
 
 model Post {
@@ -55,29 +55,29 @@ model Post {
   categoryId Int
   typeId     Int
   createdAt  DateTime @default(now())
-  updatedAt  DateTime
-  author       User     @relation(fields: [authorId], references: [id])
+  updatedAt  DateTime @updatedAt
+  author     User     @relation(fields: [authorId], references: [id])
   category   Category @relation(fields: [categoryId], references: [id])
   type       Type     @relation(fields: [typeId], references: [id])
 }
 
 model Product {
-  id               Int                @id @default(autoincrement())
-  name             String             @db.VarChar(255)
-  description      String
-  price            Decimal            @db.Decimal(10, 2)
-  discount         Decimal            @default(0) @db.Decimal(10, 2)
-  rating           Int                @default(0) @db.SmallInt
-  inventory        Int                @default(0)
-  status           Status             @default(ACTIVE)
-  categoryId       Int
-  typeId           Int
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime
-  Image            Image[]
-  category         Category           @relation(fields: [categoryId], references: [id])
-  type             Type               @relation(fields: [typeId], references: [id])
-  products ProductsOnOrders[]
+  id          Int                @id @default(autoincrement())
+  name        String             @db.VarChar(255)
+  description String
+  price       Decimal            @db.Decimal(10, 2)
+  discount    Decimal            @default(0) @db.Decimal(10, 2)
+  rating      Int                @default(0) @db.SmallInt
+  inventory   Int                @default(0)
+  status      Status             @default(ACTIVE)
+  categoryId  Int
+  typeId      Int
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  Image       Image[]
+  category    Category           @relation(fields: [categoryId], references: [id])
+  type        Type               @relation(fields: [typeId], references: [id])
+  products    ProductsOnOrders[]
 }
 
 model ProductsOnOrders {
@@ -91,8 +91,8 @@ model ProductsOnOrders {
 }
 
 model Tag {
-  id       Int        @id @default(autoincrement())
-  name     String     @db.VarChar(52)
+  id        Int        @id @default(autoincrement())
+  name      String     @db.VarChar(52)
   taggables Taggable[]
 }
 
@@ -105,8 +105,8 @@ model Taggable {
 }
 
 model Type {
-  id      Int       @id @default(autoincrement())
-  name    String    @db.VarChar(52)
+  id       Int       @id @default(autoincrement())
+  name     String    @db.VarChar(52)
   posts    Post[]
   products Product[]
 }
@@ -115,7 +115,7 @@ model User {
   id              Int       @id @default(autoincrement())
   firstName       String?   @db.VarChar(52)
   lastName        String?   @db.VarChar(52)
-  phone           String    @db.VarChar(15)
+  phone           String    @unique @db.VarChar(15)
   password        String
   email           String?   @unique @db.VarChar(52)
   role            Role      @default(USER)
@@ -125,10 +125,10 @@ model User {
   randToken       String
   image           String?
   createdAt       DateTime  @default(now())
-  updatedAt       DateTime
+  updatedAt       DateTime  @updatedAt
   city            String?
-  orders           Order[]
-  posts            Post[]
+  orders          Order[]
+  posts           Post[]
 }
 
 enum Role {
