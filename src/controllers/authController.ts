@@ -1,15 +1,20 @@
-import { body, check, validationResult } from "express-validator";
+import { body, validationResult } from "express-validator";
 import { Request, Response, NextFunction } from "express";
-import { getUserByPhone } from "../services/authServices";
-import { checkUserExist } from "../utils/auth";
+import bcrypt from "bcryptjs";
 
+import { getUserByPhone, createOtp } from "../services/authServices";
+import { checkUserExist } from "../utils/auth";
+import { generateOTP, generateToken } from "../utils/generate";
 
 export const register = [
   body("phone")
     .trim()
-    .notEmpty().withMessage("Phone number is required")
-    .matches(/^[0-9]+$/).withMessage("Phone number must contain only digits")
-    .isLength({ min: 7, max: 12 }).withMessage("Phone number must be 7 to 12 digits long"),
+    .notEmpty()
+    .withMessage("Phone number is required")
+    .matches(/^[0-9]+$/)
+    .withMessage("Phone number must contain only digits")
+    .isLength({ min: 7, max: 12 })
+    .withMessage("Phone number must be 7 to 12 digits long"),
 
   async (req: Request, res: Response, next: NextFunction) => {
     const errors = validationResult(req).array({ onlyFirstError: true });
@@ -20,16 +25,36 @@ export const register = [
       return next(error);
     }
     let phone = req.body.phone;
-    if(phone.slice(0, 2) == "09") {
+    if (phone.slice(0, 2) == "09") {
       phone = phone.substring(2, phone.length);
     }
     const user = await getUserByPhone(phone);
     checkUserExist(user);
 
-    res.status(200).json({ message: phone });
+    //OTP sending logic here
+    //Generate OTP & call OTP sending API
+    //If sms OTP can't be sent, return error
+    //save OTP to database
+
+    const otp = generateOTP() ;
+    const salt = await bcrypt.genSalt(10);
+    const hashOtp = await bcrypt.hash(otp.toString(), salt);
+    const token = generateToken();
+    const otpData = {
+      phone: phone,
+      otp: hashOtp,
+      rememberToken: token,
+      count: 1,
+    };
+    const result = await createOtp(otpData);
+
+    res.status(200).json({
+      message: `We are sending OTP to 09${result.phone}`,
+      phone: result.phone,
+      token: result.rememberToken,
+    });
   },
 ];
-
 
 export const login = async (
   req: Request,

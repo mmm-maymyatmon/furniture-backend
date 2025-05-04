@@ -9,3 +9,9 @@ export const getUserByPhone = async(phone: string) => {
         }
     })
 }
+
+export const createOtp = async(otpData: any) => {
+    return prisma.otp.create({
+        data: otpData
+    })
+}
