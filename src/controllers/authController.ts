@@ -1,9 +1,15 @@
+import { Otp } from "./../../generated/prisma/index.d";
 import { body, validationResult } from "express-validator";
 import { Request, Response, NextFunction } from "express";
 import bcrypt from "bcryptjs";
 
-import { getUserByPhone, createOtp } from "../services/authServices";
-import { checkUserExist } from "../utils/auth";
+import {
+  getUserByPhone,
+  createOtp,
+  getOtpByPhone,
+  updateOtp,
+} from "../services/authServices";
+import { checkOtpErrorIfSameDate, checkUserExist } from "../utils/auth";
 import { generateOTP, generateToken } from "../utils/generate";
 
 export const register = [
@@ -36,17 +42,56 @@ export const register = [
     //If sms OTP can't be sent, return error
     //save OTP to database
 
-    const otp = generateOTP() ;
+    const otp = generateOTP();
     const salt = await bcrypt.genSalt(10);
     const hashOtp = await bcrypt.hash(otp.toString(), salt);
     const token = generateToken();
-    const otpData = {
-      phone: phone,
-      otp: hashOtp,
-      rememberToken: token,
-      count: 1,
-    };
-    const result = await createOtp(otpData);
+
+    const otpRow = await getOtpByPhone(phone);
+    
+    let result;
+    if (!otpRow) {
+      const otpData = {
+        phone,
+        otp: hashOtp,
+        rememberToken: token,
+        count: 1,
+      };
+      result = await createOtp(otpData);
+    } else {
+      const lastOtpRequest = new Date(otpRow.updatedAt).toLocaleDateString();
+      const today = new Date().toLocaleDateString();
+      const isSameDate = lastOtpRequest === today;
+      checkOtpErrorIfSameDate(isSameDate, otpRow.errorCount);
+
+      if (!isSameDate) {
+        const OtpData = {
+          otp: hashOtp,
+          rememberToken: token,
+          count: 1,
+          error: 0,
+        };
+        result = await updateOtp(otpRow.id, OtpData);
+      } else {
+        if (otpRow.count === 5) {
+          const error: any = new Error(
+            "Otp is allowed to request 5 times per day.Please try again tomorrow."
+          );
+          error.status = 405;
+          error.code = "Error_OverLimit";
+          return next(error);
+        } else {
+          const OtpData = {
+            otp: hashOtp,
+            rememberToken: token,
+            count: {
+              increment: 1,
+            },
+          };
+          result = await updateOtp(otpRow.id, OtpData);
+        }
+      }
+    }
 
     res.status(200).json({
       message: `We are sending OTP to 09${result.phone}`,
@@ -56,20 +101,20 @@ export const register = [
   },
 ];
 
-export const login = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  res.status(200).json({ message: "Login" });
-};
-
 export const verifyOtp = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   res.status(200).json({ message: "Verify OTP" });
+};
+
+export const login = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  res.status(200).json({ message: "Login" });
 };
 
 export const confirmPassword = async (
