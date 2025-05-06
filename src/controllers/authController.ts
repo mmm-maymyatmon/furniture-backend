@@ -1,4 +1,3 @@
-import { Otp } from "./../../generated/prisma/index.d";
 import { body, validationResult } from "express-validator";
 import { Request, Response, NextFunction } from "express";
 import bcrypt from "bcryptjs";
@@ -9,7 +8,11 @@ import {
   getOtpByPhone,
   updateOtp,
 } from "../services/authServices";
-import { checkOtpErrorIfSameDate, checkUserExist } from "../utils/auth";
+import {
+  checkOtpErrorIfSameDate,
+  checkOtpRow,
+  checkUserExist,
+} from "../utils/auth";
 import { generateOTP, generateToken } from "../utils/generate";
 
 export const register = [
@@ -101,7 +104,6 @@ export const register = [
   },
 ];
 
-
 export const verifyOtp = [
   body("phone")
     .trim()
@@ -112,7 +114,7 @@ export const verifyOtp = [
     .isLength({ min: 7, max: 12 })
     .withMessage("Phone number must be 7 to 12 digits long"),
 
-    body("otp")
+  body("otp")
     .trim()
     .notEmpty()
     .withMessage("OTP is required")
@@ -130,10 +132,40 @@ export const verifyOtp = [
       return next(error);
     }
 
-    res.status(200).json({ message: "Verify OTP" });
-  }
-];
+    const { phone, otp, token } = req.body;
+    const user = await getUserByPhone(phone);
+    checkUserExist(user);
 
+    const otpRow = await getOtpByPhone(phone);
+    checkOtpRow(otpRow);
+
+    
+
+    const lastOtpVerify = new Date(otpRow!.updatedAt).toLocaleDateString();
+    const today = new Date().toLocaleDateString();
+    const isSameDate = lastOtpVerify === today;
+    //If Otp verify is the same date and over limit
+    checkOtpErrorIfSameDate(isSameDate, otpRow!.errorCount);
+    let result;
+
+    if(otpRow?.rememberToken !== token) {
+      const otpData = {
+        error: 5,
+      }
+      result = await updateOtp(otpRow!.id, otpData);
+
+      const error: any = new Error("Token is invalid.");
+      error.status = 400;
+      error.code = "Error_InvalidToken";
+      return next(error);
+      
+    }
+
+
+
+    res.status(200).json({ message: "Verify OTP" });
+  },
+];
 
 export const login = async (
   req: Request,
