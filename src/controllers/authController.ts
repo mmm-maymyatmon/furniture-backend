@@ -7,7 +7,7 @@ import {
   createOtp,
   getOtpByPhone,
   updateOtp,
-} from "../services/authServices";
+} from "../services/authService";
 import {
   checkOtpErrorIfSameDate,
   checkOtpRow,
@@ -124,6 +124,12 @@ export const verifyOtp = [
     .withMessage("OTP must be exactly 6 digits")
     .escape(),
 
+  body("token")
+    .trim()
+    .notEmpty()
+    .withMessage("Token is required")
+    .escape(),
+
   async (req: Request, res: Response, next: NextFunction) => {
     const errors = validationResult(req).array({ onlyFirstError: true });
 
@@ -211,6 +217,8 @@ export const verifyOtp = [
   },
 ];
 
+//Sending OTP ---> Verify OTP ---> Register ---> Login
+
 export const login = async (
   req: Request,
   res: Response,
@@ -219,10 +227,41 @@ export const login = async (
   res.status(200).json({ message: "Login" });
 };
 
-export const confirmPassword = async (
+export const confirmPassword = [body("phone", "Invalid phone number")
+  .trim()
+  .notEmpty()
+  .matches(/^[0-9]+$/)
+  .isLength({ min: 7, max: 12 })
+  .withMessage("Phone number must be 7 to 12 digits long"),
+
+body("password", "Password must be 8 characters")
+  .trim()
+  .notEmpty()
+  .matches(/^[0-9]+$/)
+  .isLength({ min: 8, max: 8 }),
+
+  body("token", "Invalid token")
+  .trim()
+  .notEmpty()
+  .escape(),
+  
+  , async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
+  const errors = validationResult(req).array({ onlyFirstError: true });
+
+  if (errors.length > 0) {
+    const error: any = new Error(errors[0].msg);
+    error.status = 400;
+    error.code = "Error_Invalid";
+    return next(error);
+  }
+
+  const { phone, password, token } = req.body;
+  const user = await getUserByPhone(phone);
+  checkUserExist(user);
+
   res.status(200).json({ message: "Confirm Password" });
-};
+}];
