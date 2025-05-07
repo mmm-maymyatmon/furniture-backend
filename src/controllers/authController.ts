@@ -1,4 +1,4 @@
-import { body, validationResult } from "express-validator";
+import { body, check, validationResult } from "express-validator";
 import e, { Request, Response, NextFunction } from "express";
 import bcrypt from "bcryptjs";
 
@@ -14,11 +14,13 @@ import {
   checkOtpErrorIfSameDate,
   checkOtpRow,
   checkUserExist,
+  checkUserIfNotExist,
 } from "../utils/auth";
 import { generateOTP, generateToken } from "../utils/generate";
 import moment from "moment";
 import jwt from "jsonwebtoken";
 import { access } from "fs";
+import { error } from "console";
 
 export const register = [
   body("phone")
@@ -310,6 +312,8 @@ export const confirmPassword = [
       }
     );
 
+    // Updating randToken with refreshToken
+
     const userUpdateData = {
       randToken: refreshToken,
     };
@@ -340,10 +344,131 @@ export const confirmPassword = [
   },
 ];
 
-export const login = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  res.status(200).json({ message: "Login" });
-};
+export const login = [
+  body("phone", "Invalid phone number")
+    .trim()
+    .notEmpty()
+    .matches(/^[0-9]+$/)
+    .isLength({ min: 7, max: 12 })
+    .withMessage("Phone number must be 7 to 12 digits long"),
+
+  body("password", "Password must be 8 characters")
+    .trim()
+    .notEmpty()
+    .matches(/^[0-9]+$/)
+    .isLength({ min: 8, max: 8 }),
+  async (req: Request, res: Response, next: NextFunction) => {
+    const errors = validationResult(req).array({ onlyFirstError: true });
+
+    if (errors.length > 0) {
+      const error: any = new Error(errors[0].msg);
+      error.status = 400;
+      error.code = "Error_Invalid";
+      return next(error);
+    }
+    
+    const password = req.body.password;
+    let phone = req.body.phone;
+    if (phone.slice(0, 2) == "09") {
+      phone = phone.substring(2, phone.length);
+    }
+
+    const user = await getUserByPhone(phone);
+    checkUserIfNotExist(user);
+
+    //If wrong password was over limit
+    if (user?.status === "FREEZE") {
+      const error: any = new Error(
+        "Your account is freeze. Please contact support team."
+      );
+      error.status = 403;
+      error.code = "Error_Forbidden";
+      return next(error);
+    }
+
+    const isMatchPassword = await bcrypt.compare(password, user!.password);
+    if (!isMatchPassword) {
+      //-------Starting to record wrong times
+      const lastRequest = new Date(user!.updatedAt).toLocaleDateString();
+      const today = new Date().toLocaleDateString();
+      const isSameDate = lastRequest === today;
+
+      //Today password is wrong first time
+      if (!isSameDate) {
+        const userData = {
+          errorLoginCount: 1,
+        };
+        await updateUser(user!.id, userData);
+      } else {
+        //Today password was wrong 
+        if (user!.errorLoginCount >= 2) {
+          const userData = {
+            status: "FREEZE",
+          };
+          await updateUser(user!.id, userData);
+        } else {
+          //Today password was wrong one time
+          const userData = {
+            errorLoginCount: { increment: 1 },
+          };
+          await updateUser(user!.id, userData);
+        }
+      }
+      //-------Ending ---------------------
+      
+      const error: any = new Error("Password is wrong.");
+      error.status = 401;
+      error.code = "Error_Invalid";
+      return next(error);
+    }
+
+    //Authorization token
+    const accessTokenPayload = { id: user!.id };
+    const refreshTokenPayload = { id: user!.id, phone: user!.phone };
+    const accessToken = jwt.sign(
+      accessTokenPayload,
+      process.env.ACCESS_TOKEN_SECRET!,
+      {
+        expiresIn: 60 * 15, // 15 minutes
+      }
+    );
+    const refreshToken = jwt.sign(
+      refreshTokenPayload,
+      process.env.REFRESH_TOKEN_SECRET!,
+      {
+        expiresIn: "30d", // 30 days
+      }
+    );
+    //Updating randToken with refreshToken
+
+    const userData = {
+      errorLoginCount: 0, //reset error count
+      randToken: refreshToken,
+    };
+
+    await updateUser(user!.id, userData);
+    
+
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      // secure: process.env.NODE_ENV === "production",
+      // sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+      secure: false, // only true in production
+      sameSite: "strict",
+      maxAge: 60 * 15 * 1000, // 15 minutes
+    })
+      .cookie("refreshToken", accessToken, {
+        httpOnly: true,
+        // secure: process.env.NODE_ENV === "production",
+        // sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+        secure: false,
+        sameSite: "strict",
+        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      })
+      .status(200)
+      .json({
+        message: "Successfully logged in.",
+        userId: user!.id,
+      });
+  },
+];

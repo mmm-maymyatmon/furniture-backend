@@ -30,11 +30,11 @@ export const checkOtpRow = (otpRow: any) => {
   }
 };
 
-// export const checkUserNotExist = (user: any) => {
-//     if(!user) {
-//         const error:any = new Error("User not found.");
-//         error.status = 404;
-//         error.code = "Error_NotFound";
-//         throw error;
-//     }
-// };
+export const checkUserIfNotExist = (user: any) => {
+    if(!user) {
+        const error:any = new Error("This phone number has not registered.");
+        error.status = 400;
+        error.code = "Error_Unauthenticated";
+        throw error;
+    }
+};
