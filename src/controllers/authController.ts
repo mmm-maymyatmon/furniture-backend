@@ -248,9 +248,8 @@ export const confirmPassword = [
     const otpRow = await getOtpByPhone(phone);
     checkOtpRow(otpRow);
 
-
     // OTP error count is over limit
-    if(otpRow?.errorCount === 5) {
+    if (otpRow?.errorCount === 5) {
       const error: any = new Error("This request may be an attack.");
       error.status = 400;
       error.code = "Error_Invalid";
@@ -267,13 +266,14 @@ export const confirmPassword = [
       error.status = 400;
       error.code = "Error_InvalidToken";
       return next(error);
-
     }
 
     //Request is expired
     const isExpired = moment().diff(otpRow?.updatedAt, "minutes") > 10;
     if (isExpired) {
-      const error: any = new Error("Your request is expired. Please try again.");
+      const error: any = new Error(
+        "Your request is expired. Please try again."
+      );
       error.status = 403;
       error.code = "Error_Expired";
       return next(error);
@@ -294,23 +294,49 @@ export const confirmPassword = [
     const accessTokenPayload = { id: newUser.id };
     const refreshTokenPayload = { id: newUser.id, phone: newUser.phone };
 
-    const accessToken = jwt.sign( accessTokenPayload, 
-      process.env.ACCESS_TOKEN_SECRET!, {
-        expiresIn: 60* 15, // 15 minutes
+    const accessToken = jwt.sign(
+      accessTokenPayload,
+      process.env.ACCESS_TOKEN_SECRET!,
+      {
+        expiresIn: 60 * 15, // 15 minutes
       }
-
     );
 
-    const refreshToken = jwt.sign(refreshTokenPayload, process.env.REFRESH_TOKEN_SECRET!, {
-      expiresIn: "30d", // 30 days
-    });
+    const refreshToken = jwt.sign(
+      refreshTokenPayload,
+      process.env.REFRESH_TOKEN_SECRET!,
+      {
+        expiresIn: "30d", // 30 days
+      }
+    );
 
     const userUpdateData = {
       randToken: refreshToken,
-    }
+    };
     await updateUser(newUser.id, userUpdateData);
 
-    res.status(201).json({ message: "Successfully created an account.", userId: newUser.id, accessToken, refreshToken });
+    res
+      .cookie("accessToken", accessToken, {
+        httpOnly: true,
+        // secure: process.env.NODE_ENV === "production",
+        // sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+        secure: false, // only true in production
+        sameSite: "strict",
+        maxAge: 60 * 15 * 1000, // 15 minutes
+      })
+      .cookie("refreshToken", accessToken, {
+        httpOnly: true,
+        // secure: process.env.NODE_ENV === "production",
+        // sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+        secure: false,
+        sameSite: "strict",
+        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      })
+      .status(201)
+      .json({
+        message: "Successfully created an account.",
+        userId: newUser.id,
+      });
   },
 ];
 
@@ -321,4 +347,3 @@ export const login = async (
 ) => {
   res.status(200).json({ message: "Login" });
 };
-
