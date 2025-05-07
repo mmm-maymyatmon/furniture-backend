@@ -1,5 +1,5 @@
 import { body, validationResult } from "express-validator";
-import { Request, Response, NextFunction } from "express";
+import e, { Request, Response, NextFunction } from "express";
 import bcrypt from "bcryptjs";
 
 import {
@@ -7,15 +7,18 @@ import {
   createOtp,
   getOtpByPhone,
   updateOtp,
+  createUser,
+  updateUser,
 } from "../services/authService";
 import {
   checkOtpErrorIfSameDate,
   checkOtpRow,
   checkUserExist,
-  
 } from "../utils/auth";
 import { generateOTP, generateToken } from "../utils/generate";
 import moment from "moment";
+import jwt from "jsonwebtoken";
+import { access } from "fs";
 
 export const register = [
   body("phone")
@@ -124,11 +127,7 @@ export const verifyOtp = [
     .withMessage("OTP must be exactly 6 digits")
     .escape(),
 
-  body("token")
-    .trim()
-    .notEmpty()
-    .withMessage("Token is required")
-    .escape(),
+  body("token").trim().notEmpty().withMessage("Token is required").escape(),
 
   async (req: Request, res: Response, next: NextFunction) => {
     const errors = validationResult(req).array({ onlyFirstError: true });
@@ -207,17 +206,113 @@ export const verifyOtp = [
 
     const result = await updateOtp(otpRow!.id, otpData);
 
-    res
-      .status(200)
-      .json({
-        message: "OTP is successfully verified.",
-        phone: result.phone,
-        token: result.verifiedToken,
-      });
+    res.status(200).json({
+      message: "OTP is successfully verified.",
+      phone: result.phone,
+      token: result.verifiedToken,
+    });
   },
 ];
 
 //Sending OTP ---> Verify OTP ---> Register ---> Login
+
+export const confirmPassword = [
+  body("phone", "Invalid phone number")
+    .trim()
+    .notEmpty()
+    .matches(/^[0-9]+$/)
+    .isLength({ min: 7, max: 12 })
+    .withMessage("Phone number must be 7 to 12 digits long"),
+
+  body("password", "Password must be 8 characters")
+    .trim()
+    .notEmpty()
+    .matches(/^[0-9]+$/)
+    .isLength({ min: 8, max: 8 }),
+
+  body("token", "Invalid token").trim().notEmpty().escape(),
+  async (req: Request, res: Response, next: NextFunction) => {
+    const errors = validationResult(req).array({ onlyFirstError: true });
+
+    if (errors.length > 0) {
+      const error: any = new Error(errors[0].msg);
+      error.status = 400;
+      error.code = "Error_Invalid";
+      return next(error);
+    }
+
+    const { phone, password, token } = req.body;
+    const user = await getUserByPhone(phone);
+    checkUserExist(user);
+
+    const otpRow = await getOtpByPhone(phone);
+    checkOtpRow(otpRow);
+
+
+    // OTP error count is over limit
+    if(otpRow?.errorCount === 5) {
+      const error: any = new Error("This request may be an attack.");
+      error.status = 400;
+      error.code = "Error_Invalid";
+      return next(error);
+    }
+
+    // Token is wrong
+    if (otpRow?.verifiedToken !== token) {
+      const otpData = {
+        errorCount: 5,
+      };
+      await updateOtp(otpRow!.id, otpData);
+      const error: any = new Error("Token is invalid.");
+      error.status = 400;
+      error.code = "Error_InvalidToken";
+      return next(error);
+
+    }
+
+    //Request is expired
+    const isExpired = moment().diff(otpRow?.updatedAt, "minutes") > 10;
+    if (isExpired) {
+      const error: any = new Error("Your request is expired. Please try again.");
+      error.status = 403;
+      error.code = "Error_Expired";
+      return next(error);
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashPassword = await bcrypt.hash(password, salt);
+    const randToken = "I will replace Refresh Token soon.";
+
+    const userData = {
+      phone,
+      password: hashPassword,
+      randToken,
+    };
+
+    const newUser = await createUser(userData);
+
+    const accessTokenPayload = { id: newUser.id };
+    const refreshTokenPayload = { id: newUser.id, phone: newUser.phone };
+
+    const accessToken = jwt.sign( accessTokenPayload, 
+      process.env.ACCESS_TOKEN_SECRET!, {
+        expiresIn: 60* 15, // 15 minutes
+      }
+
+    );
+
+    const refreshToken = jwt.sign(refreshTokenPayload, process.env.REFRESH_TOKEN_SECRET!, {
+      expiresIn: "30d", // 30 days
+    });
+
+    const userUpdateData = {
+      randToken: refreshToken,
+    }
+    await updateUser(newUser.id, userUpdateData);
+
+    res.status(201).json({ message: "Successfully created an account.", userId: newUser.id, accessToken, refreshToken });
+  },
+];
 
 export const login = async (
   req: Request,
@@ -227,41 +322,3 @@ export const login = async (
   res.status(200).json({ message: "Login" });
 };
 
-export const confirmPassword = [body("phone", "Invalid phone number")
-  .trim()
-  .notEmpty()
-  .matches(/^[0-9]+$/)
-  .isLength({ min: 7, max: 12 })
-  .withMessage("Phone number must be 7 to 12 digits long"),
-
-body("password", "Password must be 8 characters")
-  .trim()
-  .notEmpty()
-  .matches(/^[0-9]+$/)
-  .isLength({ min: 8, max: 8 }),
-
-  body("token", "Invalid token")
-  .trim()
-  .notEmpty()
-  .escape(),
-  
-  , async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  const errors = validationResult(req).array({ onlyFirstError: true });
-
-  if (errors.length > 0) {
-    const error: any = new Error(errors[0].msg);
-    error.status = 400;
-    error.code = "Error_Invalid";
-    return next(error);
-  }
-
-  const { phone, password, token } = req.body;
-  const user = await getUserByPhone(phone);
-  checkUserExist(user);
-
-  res.status(200).json({ message: "Confirm Password" });
-}];
