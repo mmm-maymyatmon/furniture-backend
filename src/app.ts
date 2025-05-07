@@ -4,8 +4,9 @@ import compression from "compression";
 import cors from "cors";
 import morgan from "morgan";
 import limiter from "./middlewares/rateLimiter";
+import { auth } from "./middlewares/auth";
 import authRoutes from "./routes/v1/auth"
-import viewRoutes from "./routes/v1/web/view"
+import userRoutes from "./routes/v1/admin/user"
 
 export const app = express();
 
@@ -23,6 +24,8 @@ app
 app.use(express.static("public"))
 
 app.use("/api/v1", authRoutes)
+app.use("/api/v1/admin", auth, userRoutes)
+
 // app.use(viewRoutes)
 
 
