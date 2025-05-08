@@ -7,6 +7,7 @@ import limiter from "./middlewares/rateLimiter";
 import { auth } from "./middlewares/auth";
 import authRoutes from "./routes/v1/auth"
 import userRoutes from "./routes/v1/admin/user"
+import cookieParser from "cookie-parser";
 
 export const app = express();
 
@@ -17,6 +18,7 @@ app
   .use(morgan("dev"))
   .use(express.urlencoded({ extended: true }))
   .use(express.json())
+  .use(cookieParser())
   .use(cors())
   .use(helmet())
   .use(compression())
