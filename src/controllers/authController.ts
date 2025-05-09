@@ -1,5 +1,5 @@
-import { body, check, validationResult } from "express-validator";
-import e, { Request, Response, NextFunction } from "express";
+import { body, validationResult } from "express-validator";
+import { Request, Response, NextFunction } from "express";
 import bcrypt from "bcryptjs";
 
 import {
@@ -9,6 +9,7 @@ import {
   updateOtp,
   createUser,
   updateUser,
+  getUserById,
 } from "../services/authService";
 import {
   checkOtpErrorIfSameDate,
@@ -19,8 +20,6 @@ import {
 import { generateOTP, generateToken } from "../utils/generate";
 import moment from "moment";
 import jwt from "jsonwebtoken";
-import { access } from "fs";
-import { error } from "console";
 
 export const register = [
   body("phone")
@@ -366,7 +365,7 @@ export const login = [
       error.code = "Error_Invalid";
       return next(error);
     }
-    
+
     const password = req.body.password;
     let phone = req.body.phone;
     if (phone.slice(0, 2) == "09") {
@@ -400,7 +399,7 @@ export const login = [
         };
         await updateUser(user!.id, userData);
       } else {
-        //Today password was wrong 
+        //Today password was wrong
         if (user!.errorLoginCount >= 2) {
           const userData = {
             status: "FREEZE",
@@ -415,7 +414,7 @@ export const login = [
         }
       }
       //-------Ending ---------------------
-      
+
       const error: any = new Error("Password is wrong.");
       error.status = 401;
       error.code = "Error_Invalid";
@@ -447,16 +446,16 @@ export const login = [
     };
 
     await updateUser(user!.id, userData);
-    
 
-    res.cookie("accessToken", accessToken, {
-      httpOnly: true,
-      // secure: process.env.NODE_ENV === "production",
-      // sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
-      secure: false, // only true in production
-      sameSite: "strict",
-      maxAge: 60 * 15 * 1000, // 15 minutes
-    })
+    res
+      .cookie("accessToken", accessToken, {
+        httpOnly: true,
+        // secure: process.env.NODE_ENV === "production",
+        // sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+        secure: false, // only true in production
+        sameSite: "strict",
+        maxAge: 60 * 15 * 1000, // 15 minutes
+      })
       .cookie("refreshToken", accessToken, {
         httpOnly: true,
         // secure: process.env.NODE_ENV === "production",
@@ -472,3 +471,54 @@ export const login = [
       });
   },
 ];
+
+export const logout = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const refreshToken = req.cookies ? req.cookies.refreshToken : null;
+
+  if (!refreshToken) {
+    const error: any = new Error("You are not authenticated user.");
+    error.status = 401;
+    error.code = "Error_Unauthenticated";
+    return next(error);
+  }
+
+  let decoded: { id: number; phone: string };
+  try {
+    decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET!) as {
+      id: number;
+      phone: string;
+    };
+  } catch (err) {
+    const error: any = new Error("You are not authenticated user.");
+    error.status = 401;
+    error.code = "Error_Unauthenticated";
+    return next(error);
+  }
+
+  const user = await getUserById(decoded.id);
+  checkUserIfNotExist(user);
+
+  if (user!.phone !== decoded.phone) {
+    const error: any = new Error("You are not authenticated user.");
+    error.status = 401;
+    error.code = "Error_Unauthenticated";
+    return next(error);
+  }
+
+  const userData = {
+    randToken: generateToken(),
+  }
+  
+  await updateUser(user!.id, userData);
+
+  res.clearCookie("accessToken");
+  res.clearCookie("refreshToken");
+
+  res.status(200).json({
+    message: "Successfully logged out. See you soon.",
+  });
+};
