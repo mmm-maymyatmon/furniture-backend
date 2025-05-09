@@ -32,7 +32,7 @@ app
   .use(express.urlencoded({ extended: true }))
   .use(express.json())
   .use(cookieParser())
-  .use(cors())
+  .use(cors(corsOptions))
   .use(helmet())
   .use(compression())
   .use(limiter);

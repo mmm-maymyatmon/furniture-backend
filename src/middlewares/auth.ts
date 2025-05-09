@@ -1,5 +1,6 @@
-import { Request, Response, NextFunction } from "express";
+import e, { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import { errorCode } from "../../config/errorCode";
 
 interface CustomRequest extends Request {
   userId?: number;
@@ -14,14 +15,14 @@ export const auth = (req: CustomRequest, res: Response, next: NextFunction) => {
   if (!refreshToken) {
     const err: any = new Error("You are not authenticated user.");
     err.status = 401;
-    err.code = "Error_Unauthenticated";
+    err.code = errorCode.unauthenticated;
     return next(err);
   }
 
   if (!accessToken) {
     const err: any = new Error("You are not authenticated user.");
     err.status = 401;
-    err.code = "Error_AccessTokenExpired";
+    err.code = errorCode.accessTokenExpired;
     return next(err);
   }
   //verify the access token
@@ -33,13 +34,13 @@ export const auth = (req: CustomRequest, res: Response, next: NextFunction) => {
     
   } catch (error: any) {
     if (error.name === "TokenExpiredError") {
-      error.message = "Access token has expired.";
+      error.message = "Access token is expired.";
       error.status = 401;
-      error.code = "Error_AccessTokenExpired";
+      error.code = errorCode.accessTokenExpired;
     } else {
       error.message = "Access token is invalid.";
-      error.status = 401;
-      error.code = "Error_Attack";
+      error.status = 400;
+      error.code = errorCode.attack;
     }
     return next(error);
   }
