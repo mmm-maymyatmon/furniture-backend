@@ -48,8 +48,7 @@ export const register = [
     const user = await getUserByPhone(phone);
     checkUserExist(user);
 
-    const otp = 123456;
-    // const otp = generateOTP();//for production use
+    const otp = process.env.NODE_ENV === "production" ? generateOTP() : 123456;
     const salt = await bcrypt.genSalt(10);
     const hashOtp = await bcrypt.hash(otp.toString(), salt);
     const token = generateToken();
@@ -300,7 +299,7 @@ export const confirmPassword = [
       accessTokenPayload,
       process.env.ACCESS_TOKEN_SECRET!,
       {
-        expiresIn: 60 * 15, // 15 minutes
+        expiresIn: 60 * 2, // 2 minutes
       }
     );
 
@@ -328,7 +327,7 @@ export const confirmPassword = [
         sameSite: "strict",
         maxAge: 60 * 15 * 1000, // 15 minutes
       })
-      .cookie("refreshToken", accessToken, {
+      .cookie("refreshToken", refreshToken, {
         httpOnly: true,
         // secure: process.env.NODE_ENV === "production",
         // sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
@@ -429,7 +428,7 @@ export const login = [
       accessTokenPayload,
       process.env.ACCESS_TOKEN_SECRET!,
       {
-        expiresIn: 60 * 15, // 15 minutes
+        expiresIn: 60 * 2, // 2 minutes
       }
     );
     const refreshToken = jwt.sign(
@@ -455,7 +454,7 @@ export const login = [
         // sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
         secure: false, // only true in production
         sameSite: "strict",
-        maxAge: 60 * 15 * 1000, // 15 minutes
+        maxAge: 60 * 2 * 1000, // 2 minutes
       })
       .cookie("refreshToken", refreshToken, {
         httpOnly: true,
@@ -500,6 +499,13 @@ export const logout = async (
     return next(error);
   }
 
+  if(isNaN(decoded.id)) {
+    const err: any = new Error("You are not an authenticated user.");
+    err.status = 401;
+    err.code = errorCode.unauthenticated;
+    return next(err);
+  }
+
   const user = await getUserById(decoded.id);
   checkUserIfNotExist(user);
 
@@ -512,26 +518,22 @@ export const logout = async (
 
   const userData = {
     randToken: generateToken(),
-  }
-  
+  };
+
   await updateUser(user!.id, userData);
 
   res.clearCookie("accessToken", {
     httpOnly: true,
-    // secure: process.env.NODE_ENV === "production",
-    // sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
-    secure: false, // only true in production
-    sameSite: "strict",
-  });
-  res.clearCookie("refreshToken", {
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+  })
+  .clearCookie("refreshToken", {
     httpOnly: true,
-    // secure: process.env.NODE_ENV === "production",
-    // sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
-    secure: false, // only true in production
-    sameSite: "strict",
-  });
-
-  res.status(200).json({
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+  })
+  .status(200)
+  .json({
     message: "Successfully logged out. See you soon.",
   });
 };
