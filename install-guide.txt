@@ -6,3 +6,12 @@
 6. npm i @types/express @types/cors @types/morgan --save-dev
 7. npm i bcrypt compression express-rate-limit express-validator jsonwebtoken multer
 8. npm i @types/bcrypt @types/compression @types/jsonwebtoken @types/multer --save-dev
+
+
+Localization
+Internationalization
+
+18next
+Translate api - openai
+
+npm install i18next i18next-http-middleware i18next-fs-backend

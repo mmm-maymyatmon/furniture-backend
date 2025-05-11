@@ -10,8 +10,10 @@ export const getAllUsers = async (
   next: NextFunction
 ) => {
   const id = req.userId;
+  
+
   res.status(200).json({
-    message: "All users",
+    message: req.t("welcome"),
     currentUserId: id,
   });
 };
