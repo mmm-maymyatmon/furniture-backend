@@ -1,5 +1,25 @@
 {
     "welcome": "Welcome to our furniture shop.",
-    "wrongPassword": "Incorrect password. Please try again."
+    "wrongPassword": "Incorrect password. Please try again.",
+    "login": {
+        "title": "Login",
+        "email": "Email",
+        "password": "Password",
+        "submit": "Login",
+        "forgotPassword": "Forgot Password?",
+        "register": "Register"
+    },
+    "changeLan": "successfully changed language - {{lang}} ",
+    "addToCart": "Add to Cart",
+    "removeFromCart": "Remove from Cart",
+    "cart": {
+        "title": "Cart",
+        "empty": "Your cart is empty.",
+        "total": "Total"
+    },
+    "checkout": {
+        "title": "Checkout",
+        "total": "Total"
+    }
     
 }

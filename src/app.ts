@@ -7,6 +7,7 @@ import limiter from "./middlewares/rateLimiter";
 import { auth } from "./middlewares/auth";
 import authRoutes from "./routes/v1/auth"
 import userRoutes from "./routes/v1/admin/user"
+import profileRoutes from "./routes/v1/api/user"
 import cookieParser from "cookie-parser";
 import i18next from "i18next";
 import Backend from "i18next-fs-backend";
@@ -67,6 +68,7 @@ app.use(express.static("public"))
 
 app.use("/api/v1", authRoutes)
 app.use("/api/v1/admin", auth, userRoutes)
+app.use("/api/v1", auth, profileRoutes)
 
 // app.use(viewRoutes)
 
