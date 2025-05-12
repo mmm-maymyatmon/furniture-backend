@@ -11,7 +11,7 @@ const router = express.Router();
 
 router.use("/", authRoutes);
 router.use("/user", userRoutes);
-router.use("/admins", auth, authorize(true, "ADMIN"), adminRoutes);
+router.use("/admin", auth, authorize(true, "ADMIN"), adminRoutes);
 
 
 export default router;
