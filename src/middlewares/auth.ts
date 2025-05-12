@@ -2,7 +2,7 @@ import { getUserById, updateUser } from "./../services/authService";
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { errorCode } from "../../config/errorCode";
-
+import { createError } from "../utils/error";
 
 interface CustomRequest extends Request {
   userId?: number;
@@ -20,10 +20,13 @@ export const auth = (req: CustomRequest, res: Response, next: NextFunction) => {
   const refreshToken = req.cookies ? req.cookies.refreshToken : null;
 
   if (!refreshToken) {
-    const err: any = new Error("You are not authenticated user.");
-    err.status = 401;
-    err.code = errorCode.unauthenticated;
-    return next(err);
+    return next(
+      createError(
+        "You are not authenticated user.",
+        401,
+        errorCode.unauthenticated
+      )
+    );
   }
 
   const generateNewTokens = async () => {
@@ -33,39 +36,53 @@ export const auth = (req: CustomRequest, res: Response, next: NextFunction) => {
         id: number;
         phone: string;
       };
-    } catch(error) {
-      const err: any = new Error("You are not authenticated user.");
-      err.status = 401;
-      err.code = errorCode.unauthenticated;
-      return next(err);
+    } catch (error) {
+      return next(
+        createError(
+          "You are not authenticated user.",
+          401,
+          errorCode.unauthenticated
+        )
+      );
     }
-    
 
-    if(isNaN(decoded.id)) {
-      const err: any = new Error("You are not authenticated user.");
-      err.status = 401;
-      err.code = errorCode.unauthenticated;
-      return next(err);
+    if (isNaN(decoded.id)) {
+      return next(
+        createError(
+          "You are not authenticated user.",
+          401,
+          errorCode.unauthenticated
+        )
+      );
     }
 
     const user = await getUserById(decoded.id);
     if (!user) {
-      const err: any = new Error("This account has not registered!.");
-      err.status = 401;
-      err.code = errorCode.unauthenticated;
-      return next(err);
+      return next(
+        createError(
+          "You are not authenticated user.",
+          401,
+          errorCode.unauthenticated
+        )
+      );
     }
     if (user.phone !== decoded.phone) {
-      const err: any = new Error("You are not authenticated user.");
-      err.status = 401;
-      err.code = errorCode.unauthenticated;
-      return next(err);
+      return next(
+        createError(
+          "You are not authenticated user.",
+          401,
+          errorCode.unauthenticated
+        )
+      );
     }
     if (user.randToken !== refreshToken) {
-      const err: any = new Error("You are not authenticated user.");
-      err.status = 401;
-      err.code = errorCode.unauthenticated;
-      return next(err);
+      return next(
+        createError(
+          "You are not authenticated user.",
+          401,
+          errorCode.unauthenticated
+        )
+      );
     }
 
     //Authorization Token
@@ -117,33 +134,32 @@ export const auth = (req: CustomRequest, res: Response, next: NextFunction) => {
 
   if (!accessToken) {
     return generateNewTokens();
-  } 
-  
-  else {
+  } else {
     let decoded;
     try {
       decoded = jwt.verify(accessToken, process.env.ACCESS_TOKEN_SECRET!) as {
         id: number;
       };
-      if(isNaN(decoded.id)) {
-        const err: any = new Error("You are not an authenticated user.");
-        err.status = 401;
-        err.code = errorCode.unauthenticated;
-        return next(err);
+      if (isNaN(decoded.id)) {
+        return next(
+          createError(
+            "You are not authenticated user.",
+            401,
+            errorCode.unauthenticated
+          )
+        );
       }
       req.userId = decoded.id;
 
       next();
     } catch (error: any) {
       if (error.name === "TokenExpiredError") {
-       generateNewTokens();
+        generateNewTokens();
       } else {
-        error.message = "Access token is invalid.";
-        error.status = 400; 
-        error.code = errorCode.attack;
-        return next(error);
+        return next(
+          createError("Access token is invalid.", 400, errorCode.attack)
+        );
       }
     }
   }
-  
 };

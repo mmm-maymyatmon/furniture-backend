@@ -4,35 +4,34 @@ import compression from "compression";
 import cors from "cors";
 import morgan from "morgan";
 import limiter from "./middlewares/rateLimiter";
-import { auth } from "./middlewares/auth";
-import authRoutes from "./routes/v1/auth"
-import adminRoutes from "./routes/v1/admin/admin"
-import userRoutes from "./routes/v1/api/user"
 import cookieParser from "cookie-parser";
 import i18next from "i18next";
 import Backend from "i18next-fs-backend";
 import * as middleware from "i18next-http-middleware";
-import { authorize } from "./middlewares/authorize";
 import path from "path";
+import routes from "./routes/v1";
 
 export const app = express();
 
 app.set("view engine", "ejs");
 app.set("views", "src/views");
 
-var whitelist = ['http://example1.com', 'http://localhost:5173']
+var whitelist = ["http://example1.com", "http://localhost:5173"];
 var corsOptions = {
-  origin: function (origin: any, callback: (err: Error | null, origin?: any) => void ) {
+  origin: function (
+    origin: any,
+    callback: (err: Error | null, origin?: any) => void
+  ) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true); // allow requests with no origin (like mobile apps or curl requests)
     if (whitelist.includes(origin)) {
-      callback(null, true)
+      callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'))
+      callback(new Error("Not allowed by CORS"));
     }
   },
   credentials: true, // allow credentials (cookies, authorization headers, etc.) to be sent with requests
-}
+};
 app
   .use(morgan("dev"))
   .use(express.urlencoded({ extended: true }))
@@ -43,35 +42,31 @@ app
   .use(compression())
   .use(limiter);
 
-i18next.use(Backend).use(middleware.LanguageDetector).init({
-  backend: {
-    loadPath: path.join(
-      process.cwd(),
-      "src/locales",
-      "{{lng}}",
-      "{{ns}}.json"
-    )
-  },
-  detection: {
-    order: ["querystring", "cookie", "header"],
-    caches: ["cookie"]
-  },
-  fallbackLng: "en",
-  preload: [ "en", "mm" ]
-
-})
+i18next
+  .use(Backend)
+  .use(middleware.LanguageDetector)
+  .init({
+    backend: {
+      loadPath: path.join(
+        process.cwd(),
+        "src/locales",
+        "{{lng}}",
+        "{{ns}}.json"
+      ),
+    },
+    detection: {
+      order: ["querystring", "cookie", "header"],
+      caches: ["cookie"],
+    },
+    fallbackLng: "en",
+    preload: ["en", "mm"],
+  });
 
 app.use(middleware.handle(i18next));
 
+app.use(express.static("public"));
 
-app.use(express.static("public"))
-
-app.use("/api/v1", authRoutes)
-app.use("/api/v1/admin", auth, authorize(true, "ADMIN"), adminRoutes)
-app.use("/api/v1", userRoutes)
-
-// app.use(viewRoutes)
-
+app.use("/api/v1", routes);
 
 app.use((error: any, req: Request, res: Response, next: NextFunction) => {
   const status = error.status || 500;
