@@ -8,4 +8,10 @@ export const errorCode = {
     otpExpired: "Error_OtpExpired",
     requestExpired: "Error_RequestExpired",
     accountFreeze: "Error_AccountFreeze",
+    unauthorized: "Error_Unauthorized",
+    notFound: "Error_NotFound",
+    notAllowed: "Error_NotAllowed",
+    notMatch: "Error_NotMatch",
+    notValid: "Error_NotValid",
+    
 }

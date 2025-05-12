@@ -76,7 +76,7 @@ export const auth = (req: CustomRequest, res: Response, next: NextFunction) => {
       accessTokenPayload,
       process.env.ACCESS_TOKEN_SECRET!,
       {
-        expiresIn: 60 * 2, // 2 minutes
+        expiresIn: 60 * 10, // 10 minutes
       }
     );
     const newRefreshToken = jwt.sign(

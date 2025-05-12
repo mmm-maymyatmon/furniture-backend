@@ -6,14 +6,14 @@ import morgan from "morgan";
 import limiter from "./middlewares/rateLimiter";
 import { auth } from "./middlewares/auth";
 import authRoutes from "./routes/v1/auth"
-import userRoutes from "./routes/v1/admin/user"
-import profileRoutes from "./routes/v1/api/user"
+import adminRoutes from "./routes/v1/admin/admin"
+import userRoutes from "./routes/v1/api/user"
 import cookieParser from "cookie-parser";
 import i18next from "i18next";
 import Backend from "i18next-fs-backend";
 import * as middleware from "i18next-http-middleware";
+import { authorize } from "./middlewares/authorize";
 import path from "path";
-import { de, fa } from "@faker-js/faker";
 
 export const app = express();
 
@@ -67,8 +67,8 @@ app.use(middleware.handle(i18next));
 app.use(express.static("public"))
 
 app.use("/api/v1", authRoutes)
-app.use("/api/v1/admin", auth, userRoutes)
-app.use("/api/v1", auth, profileRoutes)
+app.use("/api/v1/admin", auth, authorize(true, "ADMIN"), adminRoutes)
+app.use("/api/v1", userRoutes)
 
 // app.use(viewRoutes)
 

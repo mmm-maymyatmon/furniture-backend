@@ -7,7 +7,9 @@
         "password": "Password",
         "submit": "Login",
         "forgotPassword": "Forgot Password?",
-        "register": "Register"
+        "register": "Register",
+        "loginSuccessful": "successfully logged in",
+        "logout": "successfully logged out"
     },
     "changeLan": "successfully changed language - {{lang}} ",
     "addToCart": "Add to Cart",
