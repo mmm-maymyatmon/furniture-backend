@@ -10,8 +10,8 @@ import userRoutes from "./api";
 const router = express.Router();
 
 router.use("/", authRoutes);
-router.use("/api/v1/user", userRoutes);
-router.use("/api/v1/admins", auth, authorize(true, "ADMIN"), adminRoutes);
+router.use("/user", userRoutes);
+router.use("/admins", auth, authorize(true, "ADMIN"), adminRoutes);
 
 
 export default router;
