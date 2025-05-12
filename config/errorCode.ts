@@ -1,3 +1,5 @@
+import { maintenance } from "../src/middlewares/maintenance";
+
 export const errorCode = {
     invalid: "Error_Invalid",
     unauthenticated: "Error_Unauthenticated",
@@ -13,5 +15,6 @@ export const errorCode = {
     notAllowed: "Error_NotAllowed",
     notMatch: "Error_NotMatch",
     notValid: "Error_NotValid",
+    maintenance: "Error_Maintenance",
     
 }
