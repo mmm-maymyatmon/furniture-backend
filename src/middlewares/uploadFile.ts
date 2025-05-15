@@ -43,4 +43,10 @@ const upload = multer({
   limits: { fileSize: 1024 * 1024 * 5 }, //Testing 5MB
 });
 
+export const uploadMemory = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: fileFilter,
+  limits: { fileSize: 1024 * 1024 * 10 }, //Maximum file size 10MB, so image optimizing is needed
+})
+
 export default upload;
