@@ -1,9 +1,11 @@
 import { Request, Response, NextFunction } from "express";
 import { body, query, validationResult } from "express-validator";
 import { errorCode } from "../../../config/errorCode";
-import { getUserById } from "../../services/authService";
+import { getUserById, updateUser } from "../../services/authService";
 import { checkUserExist, checkUserIfNotExist } from "../../utils/auth";
 import { checkUploadFile } from "../../utils/check";
+import { unlink } from "node:fs/promises";
+import path from "path";
 
 interface CustomRequest extends Request {
   userId?: number;
@@ -27,20 +29,44 @@ export const changeLanguage = [
     }
     const { lng } = req.query;
     res.cookie("i18next", lng);
-    res.status(200).json({ message: req.t("changeLan", { lang: lng }) })
-  }];
+    res.status(200).json({ message: req.t("changeLan", { lang: lng }) });
+  },
+];
 
-  export const uploadProfile = async (req: CustomRequest, res: Response, next: NextFunction) => {
-    const userId = req.userId;
-    const image = req.file;  
-    const user = await getUserById(userId!);
-    checkUserIfNotExist(user);
-    checkUploadFile(image);
+export const uploadProfile = async (
+  req: CustomRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  const userId = req.userId;
+  const image = req.file;
+  const user = await getUserById(userId!);
+  checkUserIfNotExist(user);
+  checkUploadFile(image);
+  // console.log("Image: ", image);
+  const fileName = image.filename;
 
-
-
-    res.status(200).json({
-      message: "Profile image uploaded successfully"
-
-    })
+  if (user?.image) {
+    
+    try {
+      const filePath = path.join(
+      __dirname,
+      "../../../uploads/images",
+      user!.image!
+    );
+      await unlink(filePath);
+    } catch (error) {
+      console.log("Error deleting file: ", error);
+    }
   }
+
+  const userData = {
+    image: fileName,
+  };
+  await updateUser(user?.id!, userData);
+
+  res.status(200).json({
+    message: "Profile image uploaded successfully",
+    image: fileName,
+  });
+};
