@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { body, query, validationResult } from "express-validator";
+import { body, check, query, validationResult } from "express-validator";
 import { errorCode } from "../../../config/errorCode";
 import { getUserById, updateUser } from "../../services/authService";
 import { checkUserExist, checkUserIfNotExist } from "../../utils/auth";
@@ -70,3 +70,17 @@ export const uploadProfile = async (
     image: fileName,
   });
 };
+
+export const uploadProfileMultiple = async (
+  req: CustomRequest,
+  res: Response,
+  next: NextFunction
+) => {
+
+
+  res.status(200).json({
+    message: "Multiple Profile images uploaded successfully",
+  });
+
+  
+}
