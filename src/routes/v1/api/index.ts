@@ -7,6 +7,7 @@ import {
 } from "../../../controllers/api/profileController";
 import { auth } from "../../../middlewares/auth";
 import upload, { uploadMemory } from "../../../middlewares/uploadFile";
+import { getPost, getPostsByPagination } from "../../../controllers/api/PostController";
 
 const router = express.Router();
 
@@ -25,5 +26,7 @@ router.patch(
   uploadProfileMultiple
 );
 
+router.get("/posts", auth, getPostsByPagination );
+router.get("/posts/:id", auth, getPost );
 
 export default router;
