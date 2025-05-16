@@ -15,3 +15,6 @@ Internationalization
 Translate api - openai
 
 npm install i18next i18next-http-middleware i18next-fs-backend
+
+bullMQ, Redis, ioredis
+(Queue, Job, Worker)
