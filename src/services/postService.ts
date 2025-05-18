@@ -63,3 +63,56 @@ export const createOnePost = async (postData: PostArgs) => {
     data,
   });
 };
+
+export const getPostById = async(id: number)=> {
+  return prisma.post.findUnique({
+    where: {
+      id
+    }
+  })
+}
+
+export const updateOnePost = async (postId: number, postData: PostArgs) => {
+  const data: any = {
+    title: postData.title,
+    content: postData.content,
+    body: postData.body,
+    category: {
+      connectOrCreate: {
+        where: { name: postData.category },
+        create: {
+          name: postData.category,
+        },
+      },
+    },
+    type: {
+      connectOrCreate: {
+        where: { name: postData.type },
+        create: {
+          name: postData.type,
+        },
+      },
+    },
+  };
+
+  if (postData.image) {
+    data.image = postData.image;
+  }
+
+  if (postData.tags && postData.tags.length > 0) {
+    data.tags = {
+      set: [],
+      connectOrCreate: postData.tags.map((tagName) => ({
+        where: { name: tagName },
+        create: {
+          name: tagName,
+        },
+      })),
+    };
+  }
+
+  return prisma.post.update({
+    where: { id: postId },
+    data,
+  });
+};
