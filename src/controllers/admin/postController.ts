@@ -5,10 +5,11 @@ import { errorCode } from "../../../config/errorCode";
 import { createError } from "../../utils/error";
 import { getUserById } from "../../services/authService";
 import { checkUserIfNotExist } from "../../utils/auth";
-import { checkUploadFile } from "../../utils/check";
+import { checkModelIfExist, checkUploadFile } from "../../utils/check";
 import ImageQueue from "../../jobs/queues/imageQueue";
 import {
   createOnePost,
+  deleteOnePost,
   getPostById,
   PostArgs,
   updateOnePost,
@@ -184,15 +185,19 @@ export const updatePost = [
         createError("This data does not exist.", 404, errorCode.invalid)
       );
     }
-    if(user.id !== post.authorId){
-      if(req.file) {
+    if (user.id !== post.authorId) {
+      if (req.file) {
         await removeFiles(req.file.filename, null);
       }
-      return next (
-        createError("You are not allowed to update this post.", 403, errorCode.unauthorized)
-      )
+      return next(
+        createError(
+          "You are not allowed to update this post.",
+          403,
+          errorCode.unauthorized
+        )
+      );
     }
-    
+
     let data: any = {
       title,
       content,
@@ -201,10 +206,10 @@ export const updatePost = [
       category,
       type,
       tags,
-    }
+    };
 
-    if(req.file) {
-      data.image = req.file.filename
+    if (req.file) {
+      data.image = req.file.filename;
 
       const splitFileName = req.file.filename.split(".")[0];
 
@@ -226,7 +231,7 @@ export const updatePost = [
         }
       );
       const optimizedFile = post.image.split(".")[0] + ".webp";
-    await removeFiles(post.image, optimizedFile);
+      await removeFiles(post.image, optimizedFile);
     }
 
     const postUpdated = await updateOnePost(post.id, data);
@@ -235,10 +240,40 @@ export const updatePost = [
   },
 ];
 
-export const deletePost = async (
-  req: CustomRequest,
-  res: Response,
-  next: NextFunction
-) => {
-  res.status(200).json({ message: "Post deleted successfully." });
-};
+export const deletePost = [
+  body("postId", "Post Id is required").trim().notEmpty().isInt({ min: 1 }),
+  
+  async (req: CustomRequest, res: Response, next: NextFunction) => {
+    const errors = validationResult(req).array({ onlyFirstError: true });
+    if (errors.length > 0) {
+      return next(createError(errors[0].msg, 400, errorCode.invalid));
+    }
+    const { postId } = req.body;
+
+    const userId = req.userId;
+    const user = await getUserById(userId!);
+    checkUserIfNotExist(user);
+
+    const post = await getPostById(+postId); //"8" -> 8
+
+    checkModelIfExist(post);
+
+    if (user!.id !== post!.authorId) {
+      return next(
+        createError(
+          "You are not allowed to delete this post.",
+          403,
+          errorCode.unauthorized
+        )
+      );
+    }
+
+    const postDeleted = await deleteOnePost(post!.id);
+    const optimizedFile = post!.image.split(".")[0] + ".webp";
+    await removeFiles(post!.image, optimizedFile);
+
+    res
+      .status(200)
+      .json({ message: "Post deleted successfully.", postId: postDeleted.id });
+  },
+];
