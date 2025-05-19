@@ -7,7 +7,7 @@ import {
 } from "../../../controllers/api/profileController";
 import { auth } from "../../../middlewares/auth";
 import upload, { uploadMemory } from "../../../middlewares/uploadFile";
-import { getPost, getPostsByPagination } from "../../../controllers/api/PostController";
+import { getPost, getPostsByPagination, getInfinitePostsByPagination } from "../../../controllers/api/postController";
 
 const router = express.Router();
 
@@ -27,6 +27,7 @@ router.patch(
 );
 
 router.get("/posts", auth, getPostsByPagination );
+router.get("/posts/infinite", auth, getInfinitePostsByPagination );
 router.get("/posts/:id", auth, getPost );
 
 export default router;

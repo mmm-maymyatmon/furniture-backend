@@ -1,6 +1,6 @@
 import { PrismaClient } from "../../generated/prisma";
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient()
 
 export type PostArgs = {
   title: string;
@@ -122,5 +122,42 @@ export const deleteOnePost = async (id: number) => {
     where: {
       id
     },
+  });
+};
+
+export const getPostWithRelations = async (id: number) => {
+  return prisma.post.findUnique({
+    where: {
+      id
+    },
+    select: {
+      id: true,
+      title: true,
+      content: true,
+      body: true,
+      image: true,
+      updatedAt: true,
+      author: {
+        select: {
+          firstName: true,
+          lastName: true,
+        },
+      },
+      category: {
+        select: {
+          name: true,
+        },
+      },
+      type: {
+        select: {
+          name: true,
+        },
+      },
+      tags: {
+        select: {
+          name: true,
+        },
+      },
+    }
   });
 };

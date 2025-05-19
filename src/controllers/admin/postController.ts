@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { body, validationResult } from "express-validator";
+import { body, query, validationResult } from "express-validator";
 import sanitizeHtml from "sanitize-html";
 import { errorCode } from "../../../config/errorCode";
 import { createError } from "../../utils/error";
@@ -241,7 +241,7 @@ export const updatePost = [
 ];
 
 export const deletePost = [
-  body("postId", "Post Id is required").trim().notEmpty().isInt({ min: 1 }),
+  body("postId", "Post Id is required").isInt({ gt: 0 }),
   
   async (req: CustomRequest, res: Response, next: NextFunction) => {
     const errors = validationResult(req).array({ onlyFirstError: true });
