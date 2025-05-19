@@ -11,6 +11,7 @@ import {
 import { createError } from "../../utils/error";
 import { checkModelIfExist } from "../../utils/check";
 import { title } from "process";
+import { getOrSetCache } from "../../utils/cache";
 
 interface CustomRequest extends Request {
   userId?: number;
@@ -30,7 +31,11 @@ export const getPost = [
     const user = await getUserById(userId!);
     checkUserIfNotExist(user);
 
-    const post = await getPostWithRelations(+postId); //"8" -> 8
+    // const post = await getPostWithRelations(+postId); //"8" -> 8
+    const cacheKey = `posts:${JSON.stringify(postId)}`;
+    const post = await getOrSetCache(cacheKey, async () => {
+      return await getPostsList(getPostWithRelations(+postId));
+    });
 
     // const modifiedPost = {
     //   id: post?.id,
@@ -97,7 +102,11 @@ export const getPostsByPagination = [
         updatedAt: "desc",
       },
     };
-    const posts = await getPostsList(options);
+    // const posts = await getPostsList(options);
+    const cacheKey = `posts:${JSON.stringify(req.query)}`;
+    const posts = await getOrSetCache(cacheKey, async () => {
+      return await getPostsList(options);
+    });
 
     const hasNextPage = posts.length > +limit;
 
@@ -157,9 +166,13 @@ export const getInfinitePostsByPagination = [
         id: "desc",
       },
     };
-    const posts = await getPostsList(options);
+    // const posts = await getPostsList(options);
+    const cacheKey = `posts:${JSON.stringify(req.query)}`;
+    const posts = await getOrSetCache(cacheKey, async () => {
+      return await getPostsList(options);
+    });
 
-    const hasNextPage = posts.length > +limit; 
+    const hasNextPage = posts.length > +limit;
 
     if (hasNextPage) {
       posts.pop();
