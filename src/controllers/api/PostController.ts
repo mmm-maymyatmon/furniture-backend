@@ -3,7 +3,11 @@ import { body, param, query, validationResult } from "express-validator";
 import { errorCode } from "../../../config/errorCode";
 import { getUserById } from "../../services/authService";
 import { checkUserIfNotExist } from "../../utils/auth";
-import { getPostById, getPostWithRelations, getPostsList } from "../../services/postService";
+import {
+  getPostById,
+  getPostWithRelations,
+  getPostsList,
+} from "../../services/postService";
 import { createError } from "../../utils/error";
 import { checkModelIfExist } from "../../utils/check";
 import { title } from "process";
@@ -53,71 +57,123 @@ export const getPost = [
   },
 ];
 
-
 //Offset Pagination
-export const getPostsByPagination = [ 
-  query("page", "Page number must be unsigned integer.").isInt({ gt: 0 }).optional(),
-  query("limit", "Limit number must be unsigned integer.").isInt({ gt: 4 }).optional()
-   , async (
-  req: CustomRequest,
-  res: Response,
-  next: NextFunction
-) => {
-  const errors = validationResult(req).array({ onlyFirstError: true });
-  if (errors.length > 0) {
-    return next(createError(errors[0].msg, 400, errorCode.invalid));
-  }
-  const page = req.query.page || 1;
-  const limit = req.query.limit || 5;
-  const userId = req.userId;
-  const user = await getUserById(userId!);
-  checkUserIfNotExist(user);
+export const getPostsByPagination = [
+  query("page", "Page number must be unsigned integer.")
+    .isInt({ gt: 0 })
+    .optional(),
+  query("limit", "Limit number must be unsigned integer.")
+    .isInt({ gt: 4 })
+    .optional(),
+  async (req: CustomRequest, res: Response, next: NextFunction) => {
+    const errors = validationResult(req).array({ onlyFirstError: true });
+    if (errors.length > 0) {
+      return next(createError(errors[0].msg, 400, errorCode.invalid));
+    }
+    const page = req.query.page || 1;
+    const limit = req.query.limit || 5;
+    const userId = req.userId;
+    const user = await getUserById(userId!);
+    checkUserIfNotExist(user);
 
-  const skip = (+page - 1) * +limit;
-  const options = {
-    skip,
-    take: +limit + 1,
-    select: {
-      id: true,
-      title: true,
-      content: true,
-      body: true,
-      image: true,
-      updatedAt: true,
-      author: {
-        select: {
-          fullName: true,
+    const skip = (+page - 1) * +limit;
+    const options = {
+      skip,
+      take: +limit + 1,
+      select: {
+        id: true,
+        title: true,
+        content: true,
+        body: true,
+        image: true,
+        updatedAt: true,
+        author: {
+          select: {
+            fullName: true,
+          },
         },
-      }
-    },
-    orderBy: {
-      updatedAt: "desc",
-    },
+      },
+      orderBy: {
+        updatedAt: "desc",
+      },
+    };
+    const posts = await getPostsList(options);
 
-  };
-  const posts = await getPostsList(options);
+    const hasNextPage = posts.length > +limit;
 
-  const hasNextPage = posts.length > +limit; 
+    let nextPage: number | null = null;
+    const previousPage = +page !== 1 ? +page - 1 : null;
 
-  let nextPage: number | null = null;
-  const previousPage = +page !== 1 ? +page - 1 : null;
+    if (hasNextPage) {
+      posts.pop();
+      nextPage = +page + 1;
+    }
 
-  if(hasNextPage) {
-    posts.pop();
-    nextPage = +page + 1;
-  }
+    res.status(200).json({
+      message: "Get all posts",
+      currentPage: page,
+      hasNextPage,
+      previousPage,
+      nextPage,
+      posts,
+    });
+  },
+];
 
+export const getInfinitePostsByPagination = [
+  query("cursor", "Cursor must be Post ID.").isInt({ gt: 0 }).optional(),
+  query("limit", "Limit number must be unsigned integer.")
+    .isInt({ gt: 4 })
+    .optional(),
+  async (req: CustomRequest, res: Response, next: NextFunction) => {
+    const errors = validationResult(req).array({ onlyFirstError: true });
+    if (errors.length > 0) {
+      return next(createError(errors[0].msg, 400, errorCode.invalid));
+    }
+    const lastCursor = req.query.cursor;
+    const limit = req.query.limit || 5;
 
+    const userId = req.userId;
+    const user = await getUserById(userId!);
+    checkUserIfNotExist(user);
 
+    const options = {
+      take: +limit + 1,
+      skip: lastCursor ? 1 : 0,
+      cursor: lastCursor ? { id: +lastCursor } : undefined,
+      select: {
+        id: true,
+        title: true,
+        content: true,
+        image: true,
+        updatedAt: true,
+        author: {
+          select: {
+            fullName: true,
+          },
+        },
+      },
+      orderBy: {
+        id: "desc",
+      },
+    };
+    const posts = await getPostsList(options);
 
-  res.status(200).json({ message: "Get all posts", currentPage: page, hasNextPage, previousPage, nextPage, posts });
-}];
+    const hasNextPage = posts.length > +limit; // 6 > 5
 
-export const getInfinitePostsByPagination = async (
-  req: CustomRequest,
-  res: Response
-) => {
-  res.status(200).json({ message: "Post deleted successfully." });
-};
+    if (hasNextPage) {
+      posts.pop();
+    }
 
+    const newCursor = posts.length > 0 ? posts[posts.length - 1].id : null;
 
+    res
+      .status(200)
+      .json({
+        message: "Get all infinite posts",
+        posts,
+        newCursor,
+        hasNextPage,
+      });
+  },
+];
