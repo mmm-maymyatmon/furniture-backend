@@ -26,8 +26,8 @@ router.patch(
   uploadProfileMultiple
 );
 
-router.get("/posts", auth, getPostsByPagination );
-router.get("/posts/infinite", auth, getInfinitePostsByPagination );
+router.get("/posts", auth, getPostsByPagination ); //Offset Pagination
+router.get("/posts/infinite", auth, getInfinitePostsByPagination ); //Cursor-based Pagination
 router.get("/posts/:id", auth, getPost );
 
 export default router;
