@@ -159,7 +159,7 @@ export const getInfinitePostsByPagination = [
     };
     const posts = await getPostsList(options);
 
-    const hasNextPage = posts.length > +limit; // 6 > 5
+    const hasNextPage = posts.length > +limit; 
 
     if (hasNextPage) {
       posts.pop();
@@ -167,13 +167,11 @@ export const getInfinitePostsByPagination = [
 
     const newCursor = posts.length > 0 ? posts[posts.length - 1].id : null;
 
-    res
-      .status(200)
-      .json({
-        message: "Get all infinite posts",
-        posts,
-        newCursor,
-        hasNextPage,
-      });
+    res.status(200).json({
+      message: "Get all infinite posts",
+      posts,
+      newCursor,
+      hasNextPage,
+    });
   },
 ];
