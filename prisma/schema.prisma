@@ -19,7 +19,7 @@ model Image {
   id        Int     @id @default(autoincrement())
   path      String  @db.VarChar(255)
   productId Int
-  product   Product @relation(fields: [productId], references: [id])
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 }
 
 model Order {
@@ -75,7 +75,7 @@ model Product {
   typeId      Int
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
-  Image       Image[]
+  images       Image[]
   category    Category           @relation(fields: [categoryId], references: [id])
   type        Type               @relation(fields: [typeId], references: [id])
   products    ProductsOnOrders[]
