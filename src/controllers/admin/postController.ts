@@ -21,6 +21,7 @@ import cacheQueue from "../../jobs/queues/cacheQueue";
 
 interface CustomRequest extends Request {
   userId?: number;
+  user?: any;
 }
 
 const removeFiles = async (
@@ -79,22 +80,9 @@ export const createPost = [
       return next(createError(errors[0].msg, 400, errorCode.invalid));
     }
     const { title, content, body, category, type, tags } = req.body;
-    const userId = req.userId;
-    const image = req.file;
-    checkUploadFile(image);
-    const user = await getUserById(userId!);
-    if (!user) {
-      if (req.file) {
-        await removeFiles(req.file.filename, null);
-      }
-      return next(
-        createError(
-          "This user has not registered.",
-          401,
-          errorCode.unauthenticated
-        )
-      );
-    }
+    const user = req.user;
+   
+    checkUploadFile(req.file);
 
     const splitFileName = req.file?.filename.split(".")[0];
 
@@ -172,21 +160,8 @@ export const updatePost = [
     }
     const { postId, title, content, body, category, type, tags } = req.body;
 
-    const userId = req.userId;
-    const user = await getUserById(userId!);
+    const user = req.user;
 
-    if (!user) {
-      if (req.file) {
-        await removeFiles(req.file.filename, null);
-      }
-      return next(
-        createError(
-          "This user has not registered.",
-          401,
-          errorCode.unauthenticated
-        )
-      );
-    }
     const post = await getPostById(+postId); //"8" -> 8
     if (!post) {
       if (req.file) {
@@ -268,13 +243,9 @@ export const deletePost = [
       return next(createError(errors[0].msg, 400, errorCode.invalid));
     }
     const { postId } = req.body;
-
-    const userId = req.userId;
-    const user = await getUserById(userId!);
-    checkUserIfNotExist(user);
+    const user = req.user;
 
     const post = await getPostById(+postId); //"8" -> 8
-
     checkModelIfExist(post);
 
     if (user!.id !== post!.authorId) {
