@@ -1,3 +1,4 @@
+
 import express from "express";
 import {
   changeLanguage,
@@ -8,7 +9,7 @@ import {
 import { auth } from "../../../middlewares/auth";
 import upload, { uploadMemory } from "../../../middlewares/uploadFile";
 import { getPost, getPostsByPagination, getInfinitePostsByPagination } from "../../../controllers/api/postController";
-import { getProduct } from "../../../controllers/api/productController";
+import { getProduct, getProductsByPagination } from "../../../controllers/api/productController";
 
 const router = express.Router();
 
@@ -32,4 +33,5 @@ router.get("/posts/infinite", auth, getInfinitePostsByPagination ); //Cursor-bas
 router.get("/posts/:id", auth, getPost );
 
 router.get("/products/:id", auth, getProduct );
+router.get("/products", auth, getProductsByPagination ); //Cursor-based Pagination
 export default router;
