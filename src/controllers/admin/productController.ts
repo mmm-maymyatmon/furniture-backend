@@ -1,18 +1,13 @@
 import { Request, Response, NextFunction } from "express";
-import { body, query, validationResult } from "express-validator";
+import { body, validationResult } from "express-validator";
 import { errorCode } from "../../../config/errorCode";
 import { createError } from "../../utils/error";
-import { getUserById } from "../../services/authService";
-import { checkUserIfNotExist } from "../../utils/auth";
 import { checkModelIfExist, checkUploadFile } from "../../utils/check";
 import ImageQueue from "../../jobs/queues/imageQueue";
-import { createOneProduct } from "../../services/productService";
+import { createOneProduct, deleteOneProduct, getProductById, updateOneProduct } from "../../services/productService";
 import path from "path";
 import { unlink } from "fs/promises";
-import { cache } from "sharp";
 import cacheQueue from "../../jobs/queues/cacheQueue";
-import { get } from "http";
-import { getProductById, updateOneProduct } from "../../services/postService";
 
 interface CustomRequest extends Request {
   userId?: number;
@@ -35,7 +30,6 @@ const removeFiles = async (
 
       await unlink(originalFilePath);
     }
-
 
     if (optimizedFiles) {
       for (const originalFile of originalFiles) {
@@ -119,7 +113,9 @@ export const createProduct = [
       })
     );
 
-    const originalFileNames = req.files.map((file: any) => ({ path: file.filename}));
+    const originalFileNames = req.files.map((file: any) => ({
+      path: file.filename,
+    }));
 
     const data: any = {
       name,
@@ -147,10 +143,12 @@ export const createProduct = [
 
     res
       .status(201)
-      .json({ message: "Successfully created new product.", productId: product.id });
+      .json({
+        message: "Successfully created new product.",
+        productId: product.id,
+      });
   },
 ];
-
 
 export const updateProduct = [
   body("productId", "Product ID is required").isInt({ min: 1 }),
@@ -196,18 +194,21 @@ export const updateProduct = [
     } = req.body;
 
     const product = await getProductById(+productId);
-    if (!product) { 
-      if (req.files && req.files.length > 0) { 
+    if (!product) {
+      if (req.files && req.files.length > 0) {
         const originalFiles = req.files.map((file: any) => file.filename);
         await removeFiles(originalFiles, null);
       }
-      return next(createError("This data model does not exist.", 409, errorCode.invalid));
+      return next(
+        createError("This data model does not exist.", 409, errorCode.invalid)
+      );
     }
 
     let originalFileNames = [];
-    if (req.files && req.files.length > 0) { 
-      originalFileNames = req.files.map((file: any) => ({ path: file.filename, }));
-      
+    if (req.files && req.files.length > 0) {
+      originalFileNames = req.files.map((file: any) => ({
+        path: file.filename,
+      }));
     }
     const data: any = {
       name,
@@ -221,7 +222,7 @@ export const updateProduct = [
       images: originalFileNames,
     };
 
-    if (req.files && req.files.length > 0) { 
+    if (req.files && req.files.length > 0) {
       await Promise.all(
         req.files.map(async (file: any) => {
           const splitFileName = file.filename.split(".")[0];
@@ -246,12 +247,14 @@ export const updateProduct = [
       );
       // Deleting Old images
       const orgFiles = product.images.map((img) => img.path);
-      const optFiles = product.images.map((img) => img.path.split(".")[0] + ".webp");
+      const optFiles = product.images.map(
+        (img) => img.path.split(".")[0] + ".webp"
+      );
       await removeFiles(orgFiles, optFiles);
     }
-    
+
     const productUpdated = await updateOneProduct(product.id, data);
-    
+
     await cacheQueue.add(
       "invalidate-product-cache",
       {
@@ -263,5 +266,50 @@ export const updateProduct = [
       }
     );
 
-    res.status(200).json({ message: "Successfully updated product.", productId: productUpdated.id });
-  }]
+    res
+      .status(200)
+      .json({
+        message: "Successfully updated product.",
+        productId: productUpdated.id,
+      });
+  },
+];
+
+export const deleteProduct = [
+  body("productId", "Product Id is required.").isInt({ min: 1 }),
+  async (req: CustomRequest, res: Response, next: NextFunction) => {
+    const errors = validationResult(req).array({ onlyFirstError: true });
+    // If validation error occurs
+    if (errors.length > 0) {
+      return next(createError(errors[0].msg, 400, errorCode.invalid));
+    }
+
+    const { productId } = req.body;
+    const product = await getProductById(+productId);
+    checkModelIfExist(product);
+
+    const productDeleted = await deleteOneProduct(product!.id);
+
+    const orgFiles = product!.images.map((img) => img.path);
+    const optFiles = product!.images.map(
+      (img) => img.path.split(".")[0] + ".webp"
+    );
+    await removeFiles(orgFiles, optFiles);
+
+    await cacheQueue.add(
+      "invalidate-product-cache",
+      {
+        pattern: "products:*",
+      },
+      {
+        jobId: `invalidate-${Date.now()}`,
+        priority: 1,
+      }
+    );
+
+    res.status(200).json({
+      message: "Successfully deleted the product",
+      productId: productDeleted.id,
+    });
+  },
+];
