@@ -34,8 +34,10 @@ export const getPost = [
     // const post = await getPostWithRelations(+postId); //"8" -> 8
     const cacheKey = `posts:${JSON.stringify(postId)}`;
     const post = await getOrSetCache(cacheKey, async () => {
-      return await getPostsList(getPostWithRelations(+postId));
+      return await getPostWithRelations(+postId);
     });
+
+     checkModelIfExist(post);
 
     // const modifiedPost = {
     //   id: post?.id,

@@ -1,3 +1,4 @@
+import { r } from "@faker-js/faker/dist/airline-BUL6NtOJ";
 import { PrismaClient } from "../../generated/prisma";
 
 export const prisma = new PrismaClient().$extends({
@@ -35,6 +36,15 @@ export const prisma = new PrismaClient().$extends({
             month: "long",
             day: "numeric",
           });
+        }
+      }
+    },
+    image: {
+      path: {
+        needs: { path: true },
+        compute(image) {
+          return "/optimize/" + image.path.split(".")[0] + ".webp";
+          
         }
       }
     }
