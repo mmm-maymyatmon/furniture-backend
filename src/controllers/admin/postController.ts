@@ -32,7 +32,7 @@ const removeFiles = async (
     const originalFilePath = path.join(
       __dirname,
       "../../../",
-      "uploads/images",
+      "/uploads/images",
       originalFile
     );
 
@@ -42,7 +42,7 @@ const removeFiles = async (
       const optimizedFilePath = path.join(
         __dirname,
         "../../../",
-        "uploads/optimize",
+        "/uploads/optimize",
         originalFile
       );
       await unlink(optimizedFilePath);
@@ -259,7 +259,9 @@ export const deletePost = [
     }
 
     const postDeleted = await deleteOnePost(post!.id);
+    console.log("postDeleted: ", post?.image);
     const optimizedFile = post!.image.split(".")[0] + ".webp";
+    console.log("optimizedFile: ", optimizedFile);
     await removeFiles(post!.image, optimizedFile);
 
      await cacheQueue.add("invalidate-post-cache", {

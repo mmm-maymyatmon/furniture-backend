@@ -13,7 +13,7 @@ import { createError } from "../../utils/error";
 import { checkModelIfExist } from "../../utils/check";
 import { title } from "process";
 import { getOrSetCache } from "../../utils/cache";
-import { getProductsList, getProductWithRelations } from "../../services/productService";
+import { getCategoryList, getProductsList, getProductWithRelations, getTypeList } from "../../services/productService";
 
 interface CustomRequest extends Request {
   userId?: number;
@@ -97,6 +97,7 @@ export const getProductsByPagination = [
       select: {
         id: true,
         name: true,
+        description: true,
         price: true,
         discount: true,
         status: true,
@@ -124,13 +125,13 @@ export const getProductsByPagination = [
       products.pop();
     }
 
-    const newCursor = products.length > 0 ? products[products.length - 1].id : null;
+    const nextCursor = products.length > 0 ? products[products.length - 1].id : null;
 
     res.status(200).json({
       message: "Get all infinite products",
+      nextCursor,
+      prevCursor: lastCursor,
       products,
-      newCursor,
-      hasNextPage,
     });
   },
 ];
@@ -194,3 +195,20 @@ export const getProductsByPagination = [
 //     });
 //   },
 // ];
+
+export const getCategoryType = async (req: CustomRequest, res: Response, next: NextFunction) => {
+  const userId = req.userId;
+  const user = await getUserById(userId!);
+  checkUserIfNotExist(user);
+
+  const categories = await getCategoryList();
+  const types = await getTypeList();
+
+  res.status(200).json({
+    message: "Category & Types",
+    categories,
+    types,
+  })
+  
+}
+
