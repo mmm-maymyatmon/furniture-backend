@@ -1,4 +1,3 @@
-
 import { Request, Response, NextFunction } from "express";
 import { body, param, query, validationResult } from "express-validator";
 import { errorCode } from "../../../config/errorCode";
@@ -13,7 +12,18 @@ import { createError } from "../../utils/error";
 import { checkModelIfExist } from "../../utils/check";
 import { title } from "process";
 import { getOrSetCache } from "../../utils/cache";
-import { getCategoryList, getProductsList, getProductWithRelations, getTypeList } from "../../services/productService";
+import {
+  getCategoryList,
+  getProductsList,
+  getProductWithRelations,
+  getTypeList,
+} from "../../services/productService";
+import {
+  addProductFavorite,
+  removeProductFavorite,
+} from "../../services/userService";
+import { cache } from "sharp";
+import cacheQueue from "../../jobs/queues/cacheQueue";
 
 interface CustomRequest extends Request {
   userId?: number;
@@ -46,7 +56,7 @@ export const getProduct = [
 export const getProductsByPagination = [
   query("cursor", "Cursor must be Post ID.").isInt({ gt: 0 }).optional(),
   query("limit", "Limit number must be unsigned integer.")
-    .isInt({ gt: 4 })
+    .isInt({ gt: 3 })
     .optional(),
   async (req: CustomRequest, res: Response, next: NextFunction) => {
     const errors = validationResult(req).array({ onlyFirstError: true });
@@ -85,9 +95,8 @@ export const getProductsByPagination = [
       AND: [
         categoryList.length > 0 ? { categoryId: { in: categoryList } } : {},
         typeList.length > 0 ? { typeId: { in: typeList } } : {},
-
-      ]
-    }
+      ],
+    };
 
     const options = {
       where,
@@ -107,7 +116,7 @@ export const getProductsByPagination = [
             path: true,
           },
           take: 1, // Get only the first image
-        }
+        },
       },
       orderBy: {
         id: "desc",
@@ -125,7 +134,8 @@ export const getProductsByPagination = [
       products.pop();
     }
 
-    const nextCursor = products.length > 0 ? products[products.length - 1].id : null;
+    const nextCursor =
+      products.length > 0 ? products[products.length - 1].id : null;
 
     res.status(200).json({
       message: "Get all infinite products",
@@ -196,7 +206,11 @@ export const getProductsByPagination = [
 //   },
 // ];
 
-export const getCategoryType = async (req: CustomRequest, res: Response, next: NextFunction) => {
+export const getCategoryType = async (
+  req: CustomRequest,
+  res: Response,
+  next: NextFunction
+) => {
   const userId = req.userId;
   const user = await getUserById(userId!);
   checkUserIfNotExist(user);
@@ -208,7 +222,48 @@ export const getCategoryType = async (req: CustomRequest, res: Response, next: N
     message: "Category & Types",
     categories,
     types,
-  })
-  
-}
+  });
+};
+
+export const toggleFavorite = [
+  body("productId", "Product ID must not be empty").isInt({ gt: 0 }).toInt(),
+  body("favorite", "Favorite must be a boolean").isBoolean(),
+  async (req: CustomRequest, res: Response, next: NextFunction) => {
+    console.log("Request body:", req.body);
+
+    const errors = validationResult(req).array({ onlyFirstError: true });
+    console.log("Validation errors:", errors);
+
+    if (errors.length > 0) {
+      return next(createError(errors[0].msg, 400, errorCode.invalid));
+    }
+
+    const userId = req.userId;
+    const user = await getUserById(userId!);
+    checkUserIfNotExist(user);
+
+    const { productId, favorite } = req.body;
+
+    if (favorite) {
+      await addProductFavorite(userId!, productId);
+    } else {
+      await removeProductFavorite(userId!, productId);
+    }
+
+    await cacheQueue.add(
+      "invalidate-product-cache",
+      { pattern: "products:*" },
+      {
+        jobId: `invalidate-${Date.now()}`,
+        priority: 1,
+      }
+    );
+
+    res.status(200).json({
+      message: favorite
+        ? "Successfully added favorite"
+        : "Successfully removed favorite",
+    });
+  },
+];
 
