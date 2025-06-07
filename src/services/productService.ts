@@ -119,7 +119,7 @@ export const deleteOneProduct = async (id: number) => {
   });
 };
 
-export const getProductWithRelations = async (id: number) => {
+export const getProductWithRelations = async (id: number, userId: number) => {
   return prisma.product.findUnique({
     where: {
       id,
@@ -136,6 +136,16 @@ export const getProductWithRelations = async (id: number) => {
         select: {
           id: true,
           path: true,
+        },
+      },
+      // User relation is not directly accessible via 'user' in include; remove or correct as needed.
+      // If you want to include the user who created the product, use the correct relation name as defined in your Prisma schema, e.g.:
+      User: {
+        where: {
+          id: userId,
+        },
+        select: {
+          id: true,
         },
       }
     },
